@@ -1,9 +1,15 @@
-# gray-ssh
+<p align="center">
+  <img src="assets/gray-logo.svg" alt="gray" width="96">
+</p>
+<h1 align="center">gray-ssh</h1>
+<p align="center">Run commands and copy files on remote hosts over SSH/SCP.</p>
+<p align="center">
+  <a href="https://github.com/vstaln/gray-ssh/blob/main/LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt="gray plugin" src="https://img.shields.io/badge/gray-plugin-7aa2f7.svg">
+  <img alt="rust" src="https://img.shields.io/badge/built%20with-rust-orange.svg">
+</p>
 
-`ssh_run` / `ssh_copy` tools delegating shell commands and file copies to remote hosts over SSH/SCP. Port of pi's `ssh` extension.
-
-A sidecar plugin for [gray](https://github.com/vstaln/gray), scaffolded by
-[gray-account](https://github.com/vstaln/gray-account).
+`ssh_run` / `ssh_copy` tools delegate shell commands and file copies to remote hosts over SSH/SCP, with an optional host allowlist.
 
 ## What it does
 
@@ -40,3 +46,7 @@ cargo test
 cargo build --release
 gray account check      # entry point + manifest handshake
 ```
+
+---
+Part of the [gray](https://github.com/vstaln/gray) plugin ecosystem —
+the open-source AI agent harness. <https://gray.alignment.id>
