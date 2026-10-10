@@ -26,8 +26,8 @@ can't smuggle options to ssh/scp.
 
 ### Host allowlist
 
-When `~/.gray/ssh/hosts` exists, only the hosts listed there (one per line,
-`#` comments ok) may be used. No file → any host.
+Deny by default. Only the hosts listed in `~/.gray/ssh/hosts` (one per line,
+`#` comments ok) may be used. Until that file exists, every host is refused.
 
 ## Wire methods
 

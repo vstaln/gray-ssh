@@ -6,8 +6,8 @@
 //! `ssh -o BatchMode=yes -o ConnectTimeout=8 <host> <command>` (output capped
 //! at 32KB, nonzero exit → is_error) and `ssh_copy` moves a file with `scp`.
 //!
-//! Optional host allowlist: when `~/.gray/ssh/hosts` exists, only the hosts
-//! listed there (one per line, `#` comments ok) may be used.
+//! Deny by default: only the hosts listed in `~/.gray/ssh/hosts` (one per
+//! line, `#` comments ok) may be used. No list means no host.
 //!
 //! Wire methods: plugin/manifest, tool/call, plugin/shutdown.
 
@@ -72,11 +72,12 @@ fn state_dir() -> PathBuf {
         .join("ssh")
 }
 
-/// The allowlist only binds when `~/.gray/ssh/hosts` exists. Lines are exact
-/// host matches (`user@host` or bare `host`); blanks and `#` comments skip.
+/// Deny by default. Lines in `~/.gray/ssh/hosts` are exact host matches
+/// (`user@host` or bare `host`); blanks and `#` comments skip. A missing list
+/// allows nothing.
 fn host_allowed(dir: &Path, host: &str) -> bool {
     let path = dir.join("hosts");
-    let Ok(list) = std::fs::read_to_string(&path) else { return true };
+    let Ok(list) = std::fs::read_to_string(&path) else { return false };
     list.lines()
         .map(str::trim)
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
@@ -172,8 +173,12 @@ fn check_host(dir: &Path, host: &str) -> Result<(), String> {
     no_dash(host, "host")?;
     if host_allowed(dir, host) {
         Ok(())
-    } else {
+    } else if dir.join("hosts").exists() {
         Err(format!("host {host:?} not in the ~/.gray/ssh/hosts allowlist"))
+    } else {
+        Err(format!(
+            "ssh is deny-by-default: create ~/.gray/ssh/hosts listing {host:?} (one host per line)"
+        ))
     }
 }
 
@@ -309,9 +314,16 @@ mod tests {
     }
 
     #[test]
-    fn allowlist_binds_only_when_present() {
+    fn no_list_means_no_host() {
         let dir = tmpdir("allow");
-        assert!(host_allowed(&dir, "anything"));
+        assert!(!host_allowed(&dir, "anything"));
+        let err = ssh_run(&dir, &json!({"host": "anything", "command": "true"})).unwrap_err();
+        assert!(err.contains("deny-by-default"), "got: {err}");
+    }
+
+    #[test]
+    fn allowlist_admits_only_listed_hosts() {
+        let dir = tmpdir("allow");
         std::fs::write(dir.join("hosts"), "good\n# comment\n\nuser@also-good\n").unwrap();
         assert!(host_allowed(&dir, "good"));
         assert!(host_allowed(&dir, "user@also-good"));
