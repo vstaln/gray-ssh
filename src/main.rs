@@ -135,7 +135,11 @@ fn run_capped(prog: &str, args: &[&str], timeout: Duration) -> Result<String, St
         text = "(no output)".into();
     }
     if text.len() > OUT_CAP {
-        text.truncate(OUT_CAP);
+        let mut end = OUT_CAP;
+        while !text.is_char_boundary(end) {
+            end -= 1;
+        }
+        text.truncate(end);
         text.push_str("\n… truncated at 32KB");
     }
     if status.success() {
