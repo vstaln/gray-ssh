@@ -67,7 +67,7 @@ fn manifest() -> Value {
 fn state_dir() -> PathBuf {
     std::env::var_os("GRAY_HOME")
         .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".gray")))
+        .or_else(|| std::env::home_dir().map(|h| h.join(".gray")))
         .unwrap_or_else(|| PathBuf::from("."))
         .join("ssh")
 }
@@ -77,7 +77,9 @@ fn state_dir() -> PathBuf {
 /// allows nothing.
 fn host_allowed(dir: &Path, host: &str) -> bool {
     let path = dir.join("hosts");
-    let Ok(list) = std::fs::read_to_string(&path) else { return false };
+    let Ok(list) = std::fs::read_to_string(&path) else {
+        return false;
+    };
     list.lines()
         .map(str::trim)
         .filter(|l| !l.is_empty() && !l.starts_with('#'))
@@ -145,7 +147,10 @@ fn run_capped(prog: &str, args: &[&str], timeout: Duration) -> Result<String, St
     if status.success() {
         Ok(text)
     } else {
-        Err(format!("{prog} exited {}: {text}", status.code().unwrap_or(-1)))
+        Err(format!(
+            "{prog} exited {}: {text}",
+            status.code().unwrap_or(-1)
+        ))
     }
 }
 
@@ -178,7 +183,9 @@ fn check_host(dir: &Path, host: &str) -> Result<(), String> {
     if host_allowed(dir, host) {
         Ok(())
     } else if dir.join("hosts").exists() {
-        Err(format!("host {host:?} not in the ~/.gray/ssh/hosts allowlist"))
+        Err(format!(
+            "host {host:?} not in the ~/.gray/ssh/hosts allowlist"
+        ))
     } else {
         Err(format!(
             "ssh is deny-by-default: create ~/.gray/ssh/hosts listing {host:?} (one host per line)"
@@ -192,7 +199,14 @@ fn ssh_run(dir: &Path, args: &Value) -> Result<String, String> {
     check_host(dir, host)?;
     run_capped(
         "ssh",
-        &["-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, command],
+        &[
+            "-o",
+            "BatchMode=yes",
+            "-o",
+            "ConnectTimeout=8",
+            host,
+            command,
+        ],
         timeout_arg(args, RUN_DEFAULT),
     )
 }
@@ -264,7 +278,9 @@ fn main() -> std::io::Result<()> {
     let mut stdout = std::io::stdout();
     for line in stdin.lock().lines() {
         let line = line?;
-        let Ok(req) = serde_json::from_str::<Value>(&line) else { continue };
+        let Ok(req) = serde_json::from_str::<Value>(&line) else {
+            continue;
+        };
         let (reply, exit) = handle(&req);
         if let Some(reply) = reply {
             writeln!(stdout, "{reply}")?;
@@ -311,10 +327,16 @@ mod tests {
     fn missing_args_are_errors() {
         let dir = tmpdir("args");
         assert!(ssh_run(&dir, &json!({})).unwrap_err().contains("host"));
-        assert!(ssh_run(&dir, &json!({"host": "h"})).unwrap_err().contains("command"));
-        assert!(ssh_copy(&dir, &json!({"host": "h", "local": "l", "remote": "r"}))
-            .unwrap_err()
-            .contains("direction"));
+        assert!(
+            ssh_run(&dir, &json!({"host": "h"}))
+                .unwrap_err()
+                .contains("command")
+        );
+        assert!(
+            ssh_copy(&dir, &json!({"host": "h", "local": "l", "remote": "r"}))
+                .unwrap_err()
+                .contains("direction")
+        );
     }
 
     #[test]
@@ -339,7 +361,11 @@ mod tests {
     #[test]
     fn option_injection_is_refused() {
         let dir = tmpdir("dash");
-        let err = ssh_run(&dir, &json!({"host": "-oProxyCommand=x", "command": "true"})).unwrap_err();
+        let err = ssh_run(
+            &dir,
+            &json!({"host": "-oProxyCommand=x", "command": "true"}),
+        )
+        .unwrap_err();
         assert!(err.contains("'-'"), "got: {err}");
     }
 
@@ -355,7 +381,11 @@ mod tests {
     fn run_capped_flags_nonzero() {
         let err = run_capped("false", &[], Duration::from_secs(5)).unwrap_err();
         assert!(err.contains("exited"), "got: {err}");
-        assert!(run_capped("echo", &["hi"], Duration::from_secs(5)).unwrap().contains("hi"));
+        assert!(
+            run_capped("echo", &["hi"], Duration::from_secs(5))
+                .unwrap()
+                .contains("hi")
+        );
     }
 
     #[test]
