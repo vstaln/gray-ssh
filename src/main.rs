@@ -341,7 +341,7 @@ mod tests {
 
     #[test]
     fn no_list_means_no_host() {
-        let dir = tmpdir("allow");
+        let dir = tmpdir("nolist");
         assert!(!host_allowed(&dir, "anything"));
         let err = ssh_run(&dir, &json!({"host": "anything", "command": "true"})).unwrap_err();
         assert!(err.contains("deny-by-default"), "got: {err}");
